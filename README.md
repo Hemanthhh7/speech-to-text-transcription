@@ -8,7 +8,7 @@ This app converts uploaded audio recordings into text using Python’s SpeechRec
 - **Deployment:** Streamlit Cloud  
 
 ## 🌐 Live App  
-👉 [Try the app here](https://your-streamlit-cloud-link.streamlit.app)  
+👉 [Try the app here](https://speech-to-text-transcription.streamlit.app/)  
 
 ## 🗂 Files
 - `app.py` — Streamlit app

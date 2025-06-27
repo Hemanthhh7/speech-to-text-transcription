@@ -3,3 +3,5 @@ speechrecognition
 pydub
 deep-translator
 moviepy
+opencv-python
+ffmpeg-python

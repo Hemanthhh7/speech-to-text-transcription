@@ -1,5 +1,6 @@
 streamlit
-speechrecognition
+whisper
 pydub
+moviepy
+torch
 deep-translator
-ffmpeg-python

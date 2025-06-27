@@ -1,3 +1,6 @@
 streamlit
-SpeechRecognition
+speechrecognition
 pydub
+moviepy
+googletrans==4.0.0rc1
+

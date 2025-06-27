@@ -3,14 +3,13 @@ import tempfile
 import whisper
 from deep_translator import GoogleTranslator
 from pydub import AudioSegment
-from moviepy.editor import VideoFileClip
 import os
 
 st.set_page_config(page_title="🎙️ Whisper Speech Transcriber", layout="centered")
 st.title("🗣️ Multilingual Speech Transcription & Translation")
 
 st.markdown("""
-Upload audio or video in **any language**, and get transcribed text in your **preferred language**!
+Upload an audio file in **any language**, and get transcribed text in your **preferred language**!
 
 ---
 """)
@@ -26,7 +25,7 @@ model = load_model()
 output_lang = st.selectbox("🌍 Translate to Language:", ["Telugu", "English", "Hindi", "Kannada", "Tamil", "Bengali", "Urdu"])
 
 # File uploader
-uploaded_file = st.file_uploader("Upload Audio or Video", type=["wav", "mp3", "m4a", "mp4", "mov"])
+uploaded_file = st.file_uploader("Upload Audio File", type=["wav", "mp3", "m4a"])
 
 if uploaded_file:
     st.audio(uploaded_file, format="audio/wav")
@@ -36,17 +35,10 @@ if uploaded_file:
         tmp.write(uploaded_file.read())
         tmp_path = tmp.name
 
-    # Convert video to audio if needed
-    if tmp_path.endswith(('.mp4', '.mov')):
-        st.write("Extracting audio from video...")
-        videoclip = VideoFileClip(tmp_path)
-        audio_path = tmp_path + ".wav"
-        videoclip.audio.write_audiofile(audio_path, codec='pcm_s16le')
-    else:
-        # Convert all to .wav for Whisper
-        audio = AudioSegment.from_file(tmp_path)
-        audio_path = tmp_path + ".wav"
-        audio.export(audio_path, format="wav")
+    # Convert all to .wav for Whisper
+    audio = AudioSegment.from_file(tmp_path)
+    audio_path = tmp_path + ".wav"
+    audio.export(audio_path, format="wav")
 
     # Transcribe
     st.info("Transcribing... This may take a few seconds.")

@@ -1,74 +1,88 @@
 import streamlit as st
 import speech_recognition as sr
-from deep_translator import GoogleTranslator
 from pydub import AudioSegment
+from deep_translator import GoogleTranslator
 import tempfile
-from moviepy.editor import VideoFileClip
-import os
+import subprocess
 
-# Language map for display
-LANG_DISPLAY = {
-    "en": "English",
-    "hi": "Hindi",
-    "te": "Telugu",
-    "ta": "Tamil",
-    "bn": "Bengali",
-    "ml": "Malayalam",
-    "gu": "Gujarati",
-    "ur": "Urdu"
+st.set_page_config(page_title="🗣 Multilingual Speech-to-Text", layout="centered")
+st.title("🎙 Multilingual Speech Transcriber & Translator")
+
+st.markdown("""
+Upload audio or video in any Indian language. The app will:
+- 🔊 Transcribe the speech to text in the spoken language
+- 🌐 Optionally translate it to your selected target language
+""")
+
+recognizer = sr.Recognizer()
+
+# ✅ Updated language codes (for Google API)
+language_options = {
+    "Telugu": "te-IN",
+    "Hindi": "hi-IN",
+    "Tamil": "ta-IN",
+    "Kannada": "kn-IN",
+    "Bengali": "bn-IN",
+    "Marathi": "mr-IN",
+    "English": "en-US"
 }
 
-st.set_page_config(page_title="🗣️ Video & Audio Speech Translator")
-st.title("🗣️ Multilingual Speech Transcription & Translation")
+# 🎧 Audio Input Language
+input_lang = st.selectbox("🗣 Spoken Language", list(language_options.keys()), index=0)
+# 🌐 Translate To
+target_lang = st.selectbox("🌍 Translate Transcript To", list(language_options.keys()), index=6)
 
-st.write("Upload an audio or video file. Get transcription in English and translation in your selected language.")
+file = st.file_uploader("📁 Upload Audio/Video File", type=["wav", "mp3", "flac", "mp4", "mov"])
 
-# Select language
-lang_target = st.selectbox("Translate to", list(LANG_DISPLAY.keys()), index=0,
-                           format_func=lambda x: LANG_DISPLAY[x])
+# 🛠 Function to extract audio from video using ffmpeg
+def extract_audio_from_video(video_path, audio_path="extracted.wav"):
+    cmd = f"ffmpeg -i {video_path} -vn -acodec pcm_s16le -ar 44100 -ac 2 {audio_path}"
+    subprocess.call(cmd, shell=True)
+    return audio_path
 
-# Upload video/audio
-uploaded_file = st.file_uploader("Upload Audio/Video file (MP3/WAV/FLAC/MP4/MKV)", type=["mp3", "wav", "flac", "mp4", "mkv"])
+# 🧠 Transcription logic
+def transcribe(path, lang_code):
+    try:
+        with sr.AudioFile(path) as source:
+            audio = recognizer.record(source)
+            return recognizer.recognize_google(audio, language=lang_code)
+    except sr.UnknownValueError:
+        return "❌ Could not understand the audio."
+    except sr.RequestError:
+        return "⚠ API unavailable or quota exceeded."
 
-if uploaded_file:
-    st.audio(uploaded_file, format="audio/mp3")
-    st.info("📥 Processing...")
+if file:
+    st.audio(file)
+    file_ext = file.name.split(".")[-1]
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_input:
-        tmp_input.write(uploaded_file.read())
-        tmp_input.flush()
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
+        tmp.write(file.read())
+        audio_path = tmp.name
 
-        # Extract audio if video
-        if uploaded_file.name.endswith((".mp4", ".mkv")):
-            st.info("🎞️ Extracting audio from video...")
-            video = VideoFileClip(tmp_input.name)
-            audio_path = tmp_input.name + ".wav"
-            video.audio.write_audiofile(audio_path, verbose=False, logger=None)
-        else:
-            audio_path = tmp_input.name
+    # If video, extract audio
+    if file_ext in ["mp4", "mov"]:
+        audio_path = extract_audio_from_video(audio_path)
 
-        # Convert audio to WAV if not already
-        if not audio_path.endswith(".wav"):
-            audio = AudioSegment.from_file(audio_path)
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
-                audio.export(tmp_wav.name, format="wav")
-                audio_path = tmp_wav.name
+    # Convert to wav if needed
+    if file_ext in ["mp3", "flac"]:
+        sound = AudioSegment.from_file(audio_path)
+        audio_path = "converted.wav"
+        sound.export(audio_path, format="wav")
 
-        # Transcribe
-        recognizer = sr.Recognizer()
-        with sr.AudioFile(audio_path) as source:
-            audio_data = recognizer.record(source)
-            st.info("🧠 Transcribing with Google Speech API...")
-            try:
-                transcript = recognizer.recognize_google(audio_data)
-                st.success("✅ Transcription Complete")
-                st.markdown(f"### 📝 English Transcript:\n{transcript}")
+    st.info("⏳ Transcribing...")
+    lang_code = language_options[input_lang]
+    transcript = transcribe(audio_path, lang_code)
 
-                # Translate
-                translated = GoogleTranslator(source='auto', target=lang_target).translate(transcript)
-                st.markdown(f"### 🌍 Translated to {LANG_DISPLAY[lang_target]}:\n{translated}")
-            except sr.UnknownValueError:
-                st.error("❌ Could not understand the audio.")
-            except sr.RequestError:
-                st.error("⚠️ API unavailable or quota exceeded.")
+    st.success("✅ Transcription Complete!")
+    st.subheader("📝 Transcript")
+    st.write(transcript)
 
+    if input_lang != target_lang and "❌" not in transcript and "⚠" not in transcript:
+        st.info("🌐 Translating...")
+        try:
+            translated = GoogleTranslator(source='auto', target=language_options[target_lang][:2]).translate(transcript)
+            st.subheader(f"🔁 Translated to {target_lang}")
+            st.write(translated)
+        except:
+            st.error("⚠ Translation failed or API error.")

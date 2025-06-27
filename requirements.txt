@@ -1,5 +1,5 @@
 streamlit
 speechrecognition
 pydub
-googletrans==4.0.0rc1
+deep-translator
 ffmpeg-python

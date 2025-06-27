@@ -3,56 +3,72 @@ import speech_recognition as sr
 from deep_translator import GoogleTranslator
 from pydub import AudioSegment
 import tempfile
+from moviepy.editor import VideoFileClip
+import os
 
-# Language display names mapped to codes
-LANGUAGES = {
-    "Auto Detect": "auto",
-    "English": "en",
-    "Hindi": "hi",
-    "Telugu": "te",
-    "Tamil": "ta",
-    "Bengali": "bn",
-    "Malayalam": "ml",
-    "Gujarati": "gu",
-    "Urdu": "ur"
+# Language map for display
+LANG_DISPLAY = {
+    "en": "English",
+    "hi": "Hindi",
+    "te": "Telugu",
+    "ta": "Tamil",
+    "bn": "Bengali",
+    "ml": "Malayalam",
+    "gu": "Gujarati",
+    "ur": "Urdu"
 }
 
-st.set_page_config(page_title="🗣️ Multilingual Transcription & Translation")
+st.set_page_config(page_title="🗣️ Video & Audio Speech Translator")
 st.title("🗣️ Multilingual Speech Transcription & Translation")
-st.write("Upload audio, select source/target languages, and get transcription + translation!")
 
-# Language selectors
-from_lang_name = st.selectbox("🎙️ From Language", list(LANGUAGES.keys()), index=0)  # Default: Auto
-to_lang_name = st.selectbox("🌐 To Language", list(LANGUAGES.keys()), index=1)       # Default: English
+st.write("Upload an audio or video file. Get transcription in English and translation in your selected language.")
 
-from_lang = LANGUAGES[from_lang_name]
-to_lang = LANGUAGES[to_lang_name]
+# Select language
+lang_target = st.selectbox("Translate to", list(LANG_DISPLAY.keys()), index=0,
+                           format_func=lambda x: LANG_DISPLAY[x])
 
-uploaded_audio = st.file_uploader("Upload Audio (WAV/MP3/FLAC)", type=["wav", "mp3", "flac"])
-if uploaded_audio:
-    st.audio(uploaded_audio)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-        if uploaded_audio.name.endswith(".mp3"):
-            sound = AudioSegment.from_mp3(uploaded_audio)
-        elif uploaded_audio.name.endswith(".flac"):
-            sound = AudioSegment.from_file(uploaded_audio, format="flac")
+# Upload video/audio
+uploaded_file = st.file_uploader("Upload Audio/Video file (MP3/WAV/FLAC/MP4/MKV)", type=["mp3", "wav", "flac", "mp4", "mkv"])
+
+if uploaded_file:
+    st.audio(uploaded_file, format="audio/mp3")
+    st.info("📥 Processing...")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_input:
+        tmp_input.write(uploaded_file.read())
+        tmp_input.flush()
+
+        # Extract audio if video
+        if uploaded_file.name.endswith((".mp4", ".mkv")):
+            st.info("🎞️ Extracting audio from video...")
+            video = VideoFileClip(tmp_input.name)
+            audio_path = tmp_input.name + ".wav"
+            video.audio.write_audiofile(audio_path, verbose=False, logger=None)
         else:
-            sound = AudioSegment.from_file(uploaded_audio)
-        sound.export(tmp.name, format="wav")
+            audio_path = tmp_input.name
 
+        # Convert audio to WAV if not already
+        if not audio_path.endswith(".wav"):
+            audio = AudioSegment.from_file(audio_path)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_wav:
+                audio.export(tmp_wav.name, format="wav")
+                audio_path = tmp_wav.name
+
+        # Transcribe
         recognizer = sr.Recognizer()
-        with sr.AudioFile(tmp.name) as source:
+        with sr.AudioFile(audio_path) as source:
             audio_data = recognizer.record(source)
-            st.info("🔄 Transcribing... (via Google Speech Recognition)")
+            st.info("🧠 Transcribing with Google Speech API...")
             try:
-                text = recognizer.recognize_google(audio_data, language=from_lang if from_lang != "auto" else "en-IN")
-                st.success("✅ Transcription Complete!")
-                st.markdown(f"**📝 Transcript:** {text}")
+                transcript = recognizer.recognize_google(audio_data)
+                st.success("✅ Transcription Complete")
+                st.markdown(f"### 📝 English Transcript:\n{transcript}")
 
-                translated = GoogleTranslator(source=from_lang, target=to_lang).translate(text)
-                st.markdown(f"🌐 **Translated to {to_lang_name}:** {translated}")
-
+                # Translate
+                translated = GoogleTranslator(source='auto', target=lang_target).translate(transcript)
+                st.markdown(f"### 🌍 Translated to {LANG_DISPLAY[lang_target]}:\n{translated}")
             except sr.UnknownValueError:
                 st.error("❌ Could not understand the audio.")
             except sr.RequestError:
                 st.error("⚠️ API unavailable or quota exceeded.")
+

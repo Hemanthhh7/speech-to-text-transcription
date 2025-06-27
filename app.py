@@ -4,7 +4,6 @@ from pydub import AudioSegment
 from deep_translator import GoogleTranslator
 import tempfile
 import subprocess
-import os
 
 st.set_page_config(page_title="🎙️ Speech & Video Transcription", layout="centered")
 st.title("🎙️ Speech & Video Transcription + Translation")
@@ -54,7 +53,6 @@ if option == "🎤 Record Audio":
             text = transcribe_audio(tmp.name)
             st.subheader("📝 Transcription")
             st.write(text)
-
             translated = translate_text(text, language_options[target_lang])
             st.subheader(f"🌐 Translation ({target_lang})")
             st.write(translated)
@@ -71,10 +69,8 @@ elif option == "📁 Upload Audio File":
                 text = transcribe_audio("converted.wav")
             else:
                 text = transcribe_audio(tmp.name)
-
             st.subheader("📝 Transcription")
             st.write(text)
-
             translated = translate_text(text, language_options[target_lang])
             st.subheader(f"🌐 Translation ({target_lang})")
             st.write(translated)
@@ -86,15 +82,11 @@ elif option == "📹 Upload Video File":
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
             tmp.write(video.read())
             audio_path = "video_audio.wav"
-
-            # Extract audio from video using ffmpeg
             cmd = f"ffmpeg -i {tmp.name} -vn -acodec pcm_s16le -ar 44100 -ac 2 {audio_path}"
             subprocess.call(cmd, shell=True)
-
             text = transcribe_audio(audio_path)
             st.subheader("📝 Transcription")
             st.write(text)
-
             translated = translate_text(text, language_options[target_lang])
             st.subheader(f"🌐 Translation ({target_lang})")
             st.write(translated)

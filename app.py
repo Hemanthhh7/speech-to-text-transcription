@@ -1,13 +1,13 @@
 import streamlit as st
 import speech_recognition as sr
 from pydub import AudioSegment
-from moviepy.editor import VideoFileClip
 from googletrans import Translator
 import tempfile
+import subprocess
 import os
 
-st.set_page_config(page_title="🎙️ Speech & Video to Text", layout="centered")
-st.title("🎙️ Speech & Video Transcription + Translator")
+st.set_page_config(page_title="🎙️ Speech & Video Transcription", layout="centered")
+st.title("🎙️ Speech & Video Transcription + Translation")
 
 st.markdown("Upload **audio** or **video**, or record voice. Transcribe and translate to Indian languages!")
 
@@ -86,9 +86,11 @@ elif option == "📹 Upload Video File":
         st.video(video)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
             tmp.write(video.read())
-            clip = VideoFileClip(tmp.name)
-            audio_path = "extracted.wav"
-            clip.audio.write_audiofile(audio_path)
+            audio_path = "video_audio.wav"
+
+            # Extract audio from video using ffmpeg
+            cmd = f"ffmpeg -i {tmp.name} -vn -acodec pcm_s16le -ar 44100 -ac 2 {audio_path}"
+            subprocess.call(cmd, shell=True)
 
             text = transcribe_audio(audio_path)
             st.subheader("📝 Transcription")
@@ -97,4 +99,3 @@ elif option == "📹 Upload Video File":
             translated = translate_text(text, language_options[target_lang])
             st.subheader(f"🌐 Translation ({target_lang})")
             st.write(translated)
-

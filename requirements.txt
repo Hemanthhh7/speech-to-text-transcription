@@ -2,5 +2,4 @@ streamlit
 whisper
 torch
 pydub
-moviepy
 deep-translator

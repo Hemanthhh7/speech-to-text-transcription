@@ -1,7 +1,7 @@
 import streamlit as st
 import speech_recognition as sr
 from pydub import AudioSegment
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 import tempfile
 import subprocess
 import os
@@ -14,7 +14,6 @@ st.markdown("Upload **audio** or **video**, or record voice. Transcribe and tran
 option = st.radio("Choose input type:", ["🎤 Record Audio", "📁 Upload Audio File", "📹 Upload Video File"])
 
 recognizer = sr.Recognizer()
-translator = Translator()
 
 language_options = {
     "English": "en",
@@ -40,8 +39,8 @@ def transcribe_audio(path):
 
 def translate_text(text, lang_code):
     try:
-        translated = translator.translate(text, dest=lang_code)
-        return translated.text
+        translated = GoogleTranslator(source='auto', target=lang_code).translate(text)
+        return translated
     except Exception:
         return "⚠️ Translation failed."
 

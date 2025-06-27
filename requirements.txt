@@ -1,6 +1,6 @@
 streamlit
 whisper
+torch
 pydub
 moviepy
-torch
 deep-translator
